@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Repaso Módulo II — SUA y catálogo de cuentas</title>
+  <!-- Librería QR para proyección docente -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --primary: #1e3a8a;
+      --primary-hover: #1d4ed8;
+      --success: #16a34a;
+      --warning-bg: #fffbeb;
+      --warning-border: #fcd34d;
+      --warning-text: #92400e;
+      --danger: #dc2626;
+      --bg: #f1f5f9;
+      --card-bg: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #cbd5e1;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); padding-bottom: 60px; line-height: 1.5; }
+    
+    /* Header fijo adaptable */
+    header {
+      position: sticky; top: 0; z-index: 50; background: #ffffff;
+      border-bottom: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    .header-main-row {
+      padding: 12px 16px; display: flex; justify-content: space-between; align-items: center;
+    }
+    .header-titles h1 { font-size: 1.05rem; font-weight: 700; color: var(--primary); }
+    .header-titles p { font-size: 0.75rem; color: var(--text-muted); }
+    .header-actions { display: flex; gap: 8px; align-items: center; }
+    .btn-qr {
+      background: #f8fafc; border: 1px solid var(--border); border-radius: 8px;
+      padding: 6px 10px; font-size: 0.8rem; font-weight: 600; cursor: pointer; color: var(--text);
+      display: flex; align-items: center; gap: 4px;
+    }
+    .btn-qr:hover { background: #f1f5f9; }
+    .timer-badge {
+      background: #eff6ff; color: var(--primary); font-weight: 700;
+      font-size: 0.85rem; padding: 6px 10px; border-radius: 8px; border: 1px solid #bfdbfe;
+    }
+
+    /* Franja de advertencia e historial de Primer Intento en el Header */
+    .header-first-attempt-banner {
+      display: none; background: var(--warning-bg); border-top: 1px solid var(--warning-border);
+      border-bottom: 1px solid var(--warning-border); padding: 7px 16px; font-size: 0.8rem;
+      color: var(--warning-text); font-weight: 600; text-align: center;
+    }
+
+    /* Barra de progreso */
+    .progress-bar-wrap { width: 100%; height: 5px; background: #e2e8f0; }
+    .progress-bar-fill { height: 100%; width: 0%; background: var(--primary); transition: width 0.3s ease; }
+
+    /* Contenedor principal */
+    .container { width: 100%; max-width: 720px; margin: 0 auto; padding: 16px; }
+
+    /* Tarjetas */
+    .card {
+      background: var(--card-bg); border-radius: 14px; padding: 20px;
+      box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05), 0 2px 4px -2px rgba(0,0,0,0.05);
+      border: 1px solid #e2e8f0; margin-bottom: 16px;
+    }
+    .field-label { font-size: 0.88rem; font-weight: 600; margin-bottom: 6px; display: block; }
+    .field-input {
+      width: 100%; padding: 12px; border: 1px solid var(--border); border-radius: 8px;
+      font-size: 0.95rem; margin-bottom: 14px; outline: none; transition: border-color 0.2s;
+    }
+    .field-input:focus { border-color: var(--primary); }
+
+    /* Botones primarios */
+    .btn-main {
+      width: 100%; background: var(--primary); color: #ffffff; border: none;
+      padding: 14px; border-radius: 10px; font-size: 1rem; font-weight: 600;
+      cursor: pointer; transition: background 0.2s ease; display: block; text-align: center;
+    }
+    .btn-main:active { transform: scale(0.99); }
+    .btn-secondary {
+      background: #f8fafc; border: 1px solid var(--border); color: var(--text);
+      padding: 12px; border-radius: 8px; font-size: 0.92rem; font-weight: 600; cursor: pointer;
+    }
+
+    /* Paginador de preguntas */
+    .q-navigator {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(32px, 1fr));
+      gap: 6px; margin-bottom: 16px;
+    }
+    .q-dot {
+      height: 32px; border-radius: 6px; border: 1px solid var(--border);
+      background: #f8fafc; font-size: 0.75rem; font-weight: 600; display: flex;
+      align-items: center; justify-content: center; cursor: pointer; color: var(--text-muted);
+    }
+    .q-dot.active { border-color: var(--primary); color: var(--primary); font-weight: 800; background: #dbeafe; }
+    .q-dot.answered { background: var(--primary); color: #ffffff; border-color: var(--primary); }
+
+    /* Área de reactivos */
+    .q-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+    .q-num-tag { font-size: 0.75rem; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; }
+    .q-statement { font-size: 1.02rem; font-weight: 600; line-height: 1.45; margin-bottom: 18px; }
+    .options-grid { display: flex; flex-direction: column; gap: 10px; }
+    .opt-label {
+      display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+      border: 1.5px solid #e2e8f0; border-radius: 10px; background: #ffffff;
+      cursor: pointer; font-size: 0.92rem; transition: all 0.2s ease;
+    }
+    .opt-label:active { background: #eff6ff; }
+    .opt-label.selected { border-color: var(--primary); background: #f0f7ff; }
+    .opt-badge {
+      min-width: 26px; height: 26px; border-radius: 6px; background: #f1f5f9;
+      display: flex; align-items: center; justify-content: center; font-weight: 700;
+      font-size: 0.8rem; color: var(--text-muted); margin-top: 1px;
+    }
+    .opt-label.selected .opt-badge { background: var(--primary); color: #fff; }
+    .opt-text { flex: 1; line-height: 1.4; }
+    .nav-controls { display: flex; gap: 10px; margin-top: 20px; }
+
+    /* Resultados */
+    .score-circle {
+      width: 120px; height: 120px; border-radius: 50%; margin: 10px auto 14px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      border: 6px solid var(--primary);
+    }
+    .score-val { font-size: 2.2rem; font-weight: 800; color: var(--primary); line-height: 1; }
+    .score-scale { font-size: 0.75rem; color: var(--text-muted); font-weight: 600; }
+
+    /* Recuadro de Ponderación y Promedio */
+    .average-box {
+      display: none; background: #f8fafc; border: 1.5px dashed #cbd5e1;
+      border-radius: 10px; padding: 14px; margin: 16px 0; text-align: left;
+    }
+    .average-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 8px; text-align: center; }
+    .average-item { background: #ffffff; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; }
+    .average-val { font-size: 1.3rem; font-weight: 800; color: var(--primary); }
+    .average-lbl { font-size: 0.72rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+
+    /* Historial */
+    .history-card {
+      margin-top: 20px; border-top: 1px dashed var(--border); padding-top: 16px; text-align: left;
+    }
+    .history-table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.82rem; }
+    .history-table th { background: #f8fafc; color: var(--text-muted); padding: 8px 6px; text-align: left; font-weight: 600; border-bottom: 1px solid var(--border); }
+    .history-table td { padding: 8px 6px; border-bottom: 1px solid #f1f5f9; }
+    .badge-grade { font-weight: 700; padding: 2px 6px; border-radius: 4px; display: inline-block; }
+    .grade-pass { background: #dcfce7; color: #15803d; }
+    .grade-fail { background: #fee2e2; color: #b91c1c; }
+
+    /* Desglose de respuestas */
+    .review-item { padding: 12px; border-bottom: 1px solid #e2e8f0; text-align: left; font-size: 0.85rem; }
+    .review-item:last-child { border-bottom: none; }
+    .status-pill { display: inline-block; padding: 2px 8px; border-radius: 4px; font-weight: 700; font-size: 0.72rem; margin-bottom: 4px; }
+    .status-pill.correct { background: #dcfce7; color: #15803d; }
+    .status-pill.incorrect { background: #fee2e2; color: #b91c1c; }
+
+    /* Modal QR */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+    }
+    .modal-box {
+      background: #ffffff; border-radius: 14px; padding: 24px; max-width: 360px;
+      width: 100%; text-align: center;
+    }
+    #qrcode-container { display: flex; justify-content: center; margin: 18px 0; }
+
+    @media print {
+      header, .btn-main, .q-navigator, .nav-controls, .btn-qr, #action-buttons-results { display: none !important; }
+      body { background: #fff; padding: 0; }
+      .card { border: none; box-shadow: none; padding: 0; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Encabezado superior con botón QR, cronómetro y franja fija de 1er Intento -->
+  <header>
+    <div class="header-main-row">
+      <div class="header-titles">
+        <h1>Fundamentos de Contabilidad</h1>
+        <p>Módulo II · Repaso: SUA y catálogo de cuentas</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-qr" onclick="abrirModalQR()">📱 Proyectar QR</button>
+        <div class="timer-badge" id="timer-display">00:00</div>
+      </div>
+    </div>
+    <!-- Cintillo persistente que se muestra al realizar un segundo intento o posterior -->
+    <div class="header-first-attempt-banner" id="header-first-attempt-banner">
+      ⚠️ Tu intento anterior fue: <span id="banner-first-score" style="font-size: 0.95rem; font-weight: 800; color: #9a3412;">0.0</span> / 10
+    </div>
+  </header>
+  
+  <div class="progress-bar-wrap">
+    <div class="progress-bar-fill" id="progress-fill"></div>
+  </div>
+
+  <div class="container">
+
+    <!-- SECCIÓN 1: Identificación del Estudiante -->
+    <div class="card" id="screen-intro">
+      <h2 style="font-size: 1.2rem; margin-bottom: 8px; color: var(--primary);">Cuestionario de repaso</h2>
+      <p style="font-size: 0.88rem; color: var(--text-muted); margin-bottom: 18px;">
+        Son <strong>20 reactivos</strong> sobre el SUA y el catálogo de cuentas. Al terminar verás tu calificación y la <strong>explicación de cada respuesta</strong>, para que identifiques qué repasar. Puedes contestarlo las veces que quieras: no afecta tu calificación del examen.
+      </p>
+
+      <label class="field-label" for="input-name">Nombre completo del alumno:</label>
+      <input type="text" id="input-name" class="field-input" placeholder="Ej. Juan Pérez López" autocomplete="name">
+
+      <label class="field-label" for="input-group">Grupo o Matrícula:</label>
+      <input type="text" id="input-group" class="field-input" placeholder="Ej. CONT-101">
+
+      <button class="btn-main" onclick="comenzarExamen()">Comenzar cuestionario</button>
+
+      <!-- Historial de intentos previos en el dispositivo (solo lectura) -->
+      <div id="intro-history-box" style="display: none; margin-top: 20px;">
+        <h4 style="font-size: 0.9rem; color: var(--primary); margin-bottom: 6px;">Historial registrado en este dispositivo:</h4>
+        <div id="intro-history-table-container"></div>
+      </div>
+    </div>
+
+    <!-- SECCIÓN 2: Examen Interactivo -->
+    <div id="screen-quiz" style="display: none;">
+      <div class="q-navigator" id="nav-dots"></div>
+
+      <div class="card">
+        <div class="q-card-header">
+          <span class="q-num-tag" id="q-number-tag">Pregunta 1 de 20</span>
+          <span style="font-size: 0.8rem; color: var(--text-muted);" id="q-status-tag">Sin responder</span>
+        </div>
+
+        <div class="q-statement" id="q-text">Cargando reactivo...</div>
+
+        <div class="options-grid" id="options-container"></div>
+
+        <div class="nav-controls">
+          <button class="btn-secondary" style="flex:1;" id="btn-prev" onclick="moverPregunta(-1)">Anterior</button>
+          <button class="btn-secondary" style="flex:1;" id="btn-next" onclick="moverPregunta(1)">Siguiente</button>
+        </div>
+      </div>
+
+      <button class="btn-main" id="btn-finish" style="margin-top: 12px; background: #0f766e;" onclick="confirmarEntrega()">
+        Ver mis resultados
+      </button>
+    </div>
+
+    <!-- SECCIÓN 3: Pantalla de Calificación y Resultados -->
+    <div id="screen-results" style="display: none;">
+      <div class="card" style="text-align: center;">
+        <h2 style="font-size: 1.25rem; color: var(--primary);">Tu resultado</h2>
+        <p style="font-size: 0.88rem; color: var(--text-muted); margin-top: 4px;" id="res-student-info"></p>
+
+        <div class="score-circle">
+          <div class="score-val" id="res-score">0.0</div>
+          <div class="score-scale">CALIFICACIÓN / 10</div>
+        </div>
+
+        <p style="font-size: 0.95rem; font-weight: 600; margin-bottom: 14px;" id="res-summary"></p>
+
+        <!-- Cuadro de ponderación académica cuando hay más de 1 intento -->
+        <div class="average-box" id="average-box">
+          <div style="font-size: 0.85rem; font-weight: 700; color: #1e293b; margin-bottom: 4px;">📊 Ponderación de Rendimiento</div>
+          <p style="font-size: 0.78rem; color: var(--text-muted);">
+            Se toma en cuenta la primer calificación como base oficial de ponderación:
+          </p>
+          <div class="average-grid">
+            <div class="average-item">
+              <div class="average-val" id="avg-base-score" style="color: #9a3412;">0.0</div>
+              <div class="average-lbl">Intento 1 (Base)</div>
+            </div>
+            <div class="average-item">
+              <div class="average-val" id="avg-curr-score">0.0</div>
+              <div class="average-lbl">Intento Actual</div>
+            </div>
+            <div class="average-item" style="border-color: #93c5fd; background: #eff6ff;">
+              <div class="average-val" id="avg-final-score" style="color: #1e40af;">0.0</div>
+              <div class="average-lbl">Promedio</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Acciones: Repetir o Imprimir -->
+        <div id="action-buttons-results" style="display: flex; gap: 8px; margin-bottom: 18px;">
+          <button class="btn-main" style="flex: 1; background: var(--primary);" onclick="reiniciarExamenParaNuevoIntento()">
+            🔄 Intentar de nuevo
+          </button>
+          <button class="btn-secondary" style="flex: 1;" onclick="window.print()">
+            🖨️ Guardar PDF
+          </button>
+        </div>
+
+        <!-- Historial Acumulado de Intentos (Sin opción de borrado para el alumno) -->
+        <div class="history-card">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h3 style="font-size: 0.95rem; color: var(--primary);">Historial Oficial de Intentos</h3>
+            <span style="font-size: 0.72rem; color: var(--text-muted); font-weight: 600;">🔒 Registro Protegido</span>
+          </div>
+          <div id="results-history-table-container"></div>
+        </div>
+
+        <h3 style="text-align: left; font-size: 0.95rem; margin: 20px 0 8px; border-bottom: 1px solid var(--border); padding-bottom: 6px;">
+          Desglose Técnico de Respuestas:
+        </h3>
+        <div id="review-list"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Modal para Proyectar Código QR -->
+  <div class="modal-overlay" id="qr-modal" onclick="cerrarModalQR(event)">
+    <div class="modal-box" onclick="event.stopPropagation()">
+      <h3 style="font-size: 1.1rem; color: var(--primary); margin-bottom: 6px;">Escanear Examen</h3>
+      <p style="font-size: 0.8rem; color: var(--text-muted);">Apunta la cámara del celular para abrir la evaluación:</p>
+      <div id="qrcode-container"></div>
+      <p style="font-size: 0.72rem; word-break: break-all; color: var(--text-muted); margin-bottom: 14px;" id="qr-current-url"></p>
+      <button class="btn-secondary" style="width: 100%;" onclick="cerrarModalQR()">Cerrar</button>
+    </div>
+  </div>
+
+  <script>
+    // Banco oficial de 20 reactivos
+    const examenData = [
+      {
+        q: "1. ¿Qué es el SUA?",
+        opts: [
+          "Un portal del SAT para presentar la declaración anual de las personas morales.",
+          "Un software gratuito del IMSS que permite capturar la información del patrón y de los trabajadores de la empresa.",
+          "Un sistema privado de nómina que se compra al IMSS y solo usa el área de recursos humanos.",
+          "Una plataforma bancaria para pagar las cuotas obrero-patronales por internet."
+        ],
+        ans: 1,
+        exp: "El SUA (Sistema Único de Autodeterminación) es un software gratuito del propio IMSS que captura los datos del patrón y de sus trabajadores."
+      },
+      {
+        q: "2. ¿Cuál es el objetivo principal del SUA según tus apuntes?",
+        opts: [
+          "Calcular el ISR que se retiene a cada trabajador.",
+          "Emitir las facturas electrónicas de la nómina.",
+          "Entregar la cédula de determinación, que indica a recursos humanos cuánto hay que pagarle al IMSS por cada trabajador.",
+          "Llevar el control de asistencia y vacaciones del personal."
+        ],
+        ans: 2,
+        exp: "Con el SUA se entrega la cédula de determinación: es el documento que dice a RH cuánto se debe pagar al IMSS por cada trabajador."
+      },
+      {
+        q: "3. ¿Con qué periodicidad se entregan los reportes del SUA y con qué corte?",
+        opts: [
+          "Mensual, con corte al día 10 de cada mes.",
+          "Bimestral, con corte al día 17 de cada mes.",
+          "Trimestral, con corte al último día del trimestre.",
+          "Anual, con corte en el mes de abril."
+        ],
+        ans: 1,
+        exp: "Los reportes se entregan de manera bimestral, con corte al 17 de cada mes."
+      },
+      {
+        q: "4. ¿En qué mes se modifica la cuota de la prima de riesgo de trabajo?",
+        opts: [
+          "Enero",
+          "Febrero",
+          "Julio",
+          "Diciembre"
+        ],
+        ans: 1,
+        exp: "Una vez al año, en el mes de febrero, se modifica la cuota de la prima de riesgo de trabajo."
+      },
+      {
+        q: "5. Los datos del patrón dentro del SUA se capturan:",
+        opts: [
+          "Cada bimestre, junto con el entero de cuotas.",
+          "Cada vez que se da de alta o de baja un trabajador.",
+          "Por única ocasión, y se debe entregar el expediente con copias cotejadas y certificadas al IMSS.",
+          "Solo cuando el IMSS lo solicite por escrito."
+        ],
+        ans: 2,
+        exp: "La pauta y los datos del patrón se ingresan por única ocasión; el expediente se entrega con copias cotejadas y certificadas al IMSS."
+      },
+      {
+        q: "6. En el SUA, ¿cuál es la diferencia entre el Nombre y la Razón social del patrón?",
+        opts: [
+          "El Nombre es el nombre comercial de la empresa; la Razón social es el nombre legal que aparece en el acta constitutiva.",
+          "El Nombre es el nombre legal del acta constitutiva; la Razón social es el nombre comercial.",
+          "Son sinónimos: los dos se copian del RFC de la empresa.",
+          "El Nombre lo asigna el IMSS y la Razón social la asigna el SAT."
+        ],
+        ans: 0,
+        exp: "El Nombre es el nombre comercial con el que se conoce la empresa; la Razón social es el nombre legal y se toma del acta constitutiva."
+      },
+      {
+        q: "7. La matrícula o NRP del patrón:",
+        opts: [
+          "La asigna el contador de la empresa al abrir los libros.",
+          "Es el mismo RFC de la empresa con dos dígitos adicionales.",
+          "La asigna el IMSS en el momento en que se entrega el expediente y se compone de una letra y diez números.",
+          "Se forma con el NSS del representante legal."
+        ],
+        ans: 2,
+        exp: "La matrícula o NRP (Número de Registro Patronal) la asigna el IMSS al recibir el expediente: una letra y diez números."
+      },
+      {
+        q: "8. ¿Cómo se acredita la representación legal del patrón ante el IMSS?",
+        opts: [
+          "Con el acta de nacimiento del representante.",
+          "Con el poder notarial que le permite realizar los procesos administrativos.",
+          "Con la constancia de situación fiscal.",
+          "Con el contrato colectivo de trabajo."
+        ],
+        ans: 1,
+        exp: "La representación legal se acredita con el poder notarial mediante el cual la empresa nombra a su representante legal."
+      },
+      {
+        q: "9. El NSS o número único de afiliación del trabajador:",
+        opts: [
+          "Cambia cada vez que el trabajador cambia de patrón.",
+          "Lo asigna el patrón al momento de contratar.",
+          "Se le asigna al trabajador de por vida y consta de once dígitos.",
+          "Se forma con los primeros diez caracteres de la CURP."
+        ],
+        ans: 2,
+        exp: "El NSS es el número único de afiliación: se asigna de por vida y consta de once dígitos."
+      },
+      {
+        q: "10. El RFC de un trabajador (persona física) se compone de:",
+        opts: [
+          "Cuatro letras del apellido y del nombre, seis dígitos de la fecha de nacimiento y tres de la homoclave.",
+          "Tres letras y nueve números, sin homoclave.",
+          "Dieciocho caracteres alfanuméricos con la entidad de nacimiento.",
+          "Una letra y diez números, igual que el registro patronal."
+        ],
+        ans: 0,
+        exp: "El RFC de persona física lleva cuatro letras (apellidos y nombre), seis dígitos de la fecha de nacimiento y tres de homoclave: trece caracteres."
+      },
+      {
+        q: "11. La CURP se compone de dieciocho caracteres. ¿Cuáles son?",
+        opts: [
+          "Cuatro letras del nombre, seis de la fecha de nacimiento y ocho de la homoclave.",
+          "Cuatro letras de nombre y apellidos, seis de la fecha de nacimiento, uno del sexo, dos de la entidad de nacimiento, tres consonantes de control y dos de homoclave.",
+          "Once dígitos: dos de la subdelegación, dos del año de registro y siete de control.",
+          "Seis dígitos de la fecha de nacimiento y doce letras del nombre completo."
+        ],
+        ans: 1,
+        exp: "La CURP tiene 18 caracteres: 4 letras, 6 de la fecha, 1 del sexo, 2 de la entidad de nacimiento, 3 consonantes de control y 2 de homoclave."
+      },
+      {
+        q: "12. El nombre completo del trabajador se captura:",
+        opts: [
+          "Con las iniciales, para ahorrar espacio en el sistema.",
+          "Sin abreviaturas y en el mismo orden en que aparece en la CURP.",
+          "Empezando por los apellidos y luego el nombre, sin importar la CURP.",
+          "Tal como lo escriba el trabajador, sin ninguna regla."
+        ],
+        ans: 1,
+        exp: "Se escribe sin abreviaturas y de acuerdo con el orden que presenta la CURP."
+      },
+      {
+        q: "13. El tipo o clase de trabajador que reconoce el IMSS puede ser:",
+        opts: [
+          "Permanente, eventual, suplencia, confianza o destajo (lista de raya).",
+          "Únicamente permanente o eventual.",
+          "Fijo, temporal o becario.",
+          "Sindicalizado o de confianza, sin otra opción."
+        ],
+        ans: 0,
+        exp: "La clasificación laboral que se captura es: permanente, eventual, suplencia, confianza o destajo (lista de raya)."
+      },
+      {
+        q: "14. Para el IMSS, el tipo de jornada solo puede ser:",
+        opts: [
+          "Matutina o vespertina.",
+          "Diurna, mixta o nocturna.",
+          "Completa o reducida (medio tiempo).",
+          "Fija o rotativa."
+        ],
+        ans: 2,
+        exp: "Para el IMSS solo existen dos jornadas: completa o reducida (medio tiempo)."
+      },
+      {
+        q: "15. El salario base que se captura en el SUA incluye:",
+        opts: [
+          "Únicamente el sueldo diario pactado.",
+          "El sueldo y el factor correspondiente al aguinaldo, la prima vacacional y demás prestaciones.",
+          "El sueldo menos las deducciones y descuentos.",
+          "El salario mínimo vigente de la zona."
+        ],
+        ans: 1,
+        exp: "En el salario base se indica el sueldo con su factor: aguinaldo, prima vacacional y demás prestaciones."
+      },
+      {
+        q: "16. El sexo del trabajador se valida en el SUA con:",
+        opts: [
+          "El acta de nacimiento.",
+          "La posición número 11 de la CURP.",
+          "El NSS.",
+          "El RFC."
+        ],
+        ans: 1,
+        exp: "Solo se define hombre o mujer, y se valida con la posición número 11 de la CURP."
+      },
+      {
+        q: "17. ¿Qué es el catálogo de cuentas?",
+        opts: [
+          "El listado de clientes y proveedores de la empresa.",
+          "El documento donde se enlistan todas las cuentas que la empresa utiliza en su contabilidad, asignándoles un nombre o un número.",
+          "El estado de resultados del ejercicio.",
+          "La balanza de comprobación mensual."
+        ],
+        ans: 1,
+        exp: "Es el documento que enlista todas las cuentas que la empresa usa para su contabilidad, con nombre o número, para identificarlas de manera eficiente y oportuna."
+      },
+      {
+        q: "18. En el llenado del catálogo de cuentas, el rubro es:",
+        opts: [
+          "El nivel más detallado, donde se sabe cuánto y en dónde se gastó.",
+          "El apartado contable que agrupa las distintas cuentas, identificado con partidas como 1000, 2000, 4000 y 7000.",
+          "El número progresivo de control de cada cuenta.",
+          "El saldo final de la cuenta al cierre del ejercicio."
+        ],
+        ans: 1,
+        exp: "El rubro es el apartado contable que agrupa distintas cuentas y se identifica con partidas como 1000, 2000, 4000 y 7000."
+      },
+      {
+        q: "19. La subcuenta dentro del catálogo se caracteriza por:",
+        opts: [
+          "Agrupar varios rubros a la vez.",
+          "Ser el nivel más detallado: determina de manera exacta cuánto y en dónde se gastó el dinero.",
+          "Sustituir al catálogo cuando la empresa es pequeña.",
+          "Ser el número consecutivo que se asigna a cada cuenta maestra."
+        ],
+        ans: 1,
+        exp: "La subcuenta es el nivel más detallado del catálogo: determina de manera exacta cuánto y en dónde se gastó."
+      },
+      {
+        q: "20. El apoyo para gastos funerarios del IMSS consiste en:",
+        opts: [
+          "Un mes de salario para la familia del trabajador fallecido.",
+          "$5,000.00 sin ningún requisito.",
+          "$1,132.00 a la persona que pagó los gastos y que aparezca en la factura, siempre que el trabajador tenga al menos 12 semanas cotizadas.",
+          "El pago completo del servicio funerario contratado."
+        ],
+        ans: 2,
+        exp: "Se otorgan $1,132.00 a quien haya pagado los gastos y aparezca en la factura, con al menos 12 semanas cotizadas y su número de seguro social."
+      }
+    ];
+
+    // Variables de Estado
+    let estudiante = { nombre: "", grupo: "" };
+    let respuestasUsuario = new Array(examenData.length).fill(null);
+    let indexActual = 0;
+    let tiempoSegundos = 0;
+    let intervaloTimer = null;
+    const STORAGE_KEY = "conta2_repaso_historial";
+
+    window.addEventListener("DOMContentLoaded", () => {
+      const savedStudent = localStorage.getItem("conta2_repaso_alumno");
+      if (savedStudent) {
+        try {
+          const parsed = JSON.parse(savedStudent);
+          document.getElementById('input-name').value = parsed.nombre || "";
+          document.getElementById('input-group').value = parsed.grupo || "";
+        } catch(e){}
+      }
+      actualizarHistorialEnPantalla();
+    });
+
+    function initNavDots() {
+      const cont = document.getElementById('nav-dots');
+      cont.innerHTML = "";
+      examenData.forEach((_, i) => {
+        const dot = document.createElement('div');
+        dot.className = `q-dot ${i === 0 ? 'active' : ''}`;
+        dot.id = `dot-${i}`;
+        dot.innerText = i + 1;
+        dot.onclick = () => irAPregunta(i);
+        cont.appendChild(dot);
+      });
+    }
+
+    function comenzarExamen() {
+      const nombre = document.getElementById('input-name').value.trim();
+      const grupo = document.getElementById('input-group').value.trim();
+
+      if (!nombre) {
+        alert("Por favor ingresa tu nombre completo antes de iniciar.");
+        return;
+      }
+
+      estudiante.nombre = nombre;
+      estudiante.grupo = grupo || "General";
+      localStorage.setItem("conta2_repaso_alumno", JSON.stringify(estudiante));
+
+      document.getElementById('screen-intro').style.display = 'none';
+      document.getElementById('screen-results').style.display = 'none';
+      document.getElementById('screen-quiz').style.display = 'block';
+
+      respuestasUsuario = new Array(examenData.length).fill(null);
+      indexActual = 0;
+      tiempoSegundos = 0;
+      document.getElementById('timer-display').innerText = "00:00";
+
+      initNavDots();
+      renderPregunta();
+
+      // Verificar y mostrar franja en el header si ya existe un primer intento guardado
+      verificarBannerPrimerIntento();
+
+      clearInterval(intervaloTimer);
+      intervaloTimer = setInterval(() => {
+        tiempoSegundos++;
+        const mins = String(Math.floor(tiempoSegundos / 60)).padStart(2, '0');
+        const secs = String(tiempoSegundos % 60).padStart(2, '0');
+        document.getElementById('timer-display').innerText = `${mins}:${secs}`;
+      }, 1000);
+
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function verificarBannerPrimerIntento() {
+      const historial = obtenerHistorial();
+      const banner = document.getElementById('header-first-attempt-banner');
+      const scoreSpan = document.getElementById('banner-first-score');
+
+      if (historial.length >= 1) {
+        const primerIntento = historial[0];
+        scoreSpan.innerText = primerIntento.calificacion;
+        banner.style.display = 'block';
+      } else {
+        banner.style.display = 'none';
+      }
+    }
+
+    function renderPregunta() {
+      const item = examenData[indexActual];
+      document.getElementById('q-number-tag').innerText = `Pregunta ${indexActual + 1} de ${examenData.length}`;
+      document.getElementById('q-status-tag').innerText = respuestasUsuario[indexActual] !== null ? "Respondida" : "Sin responder";
+      document.getElementById('q-text').innerText = item.q;
+
+      examenData.forEach((_, i) => {
+        const dot = document.getElementById(`dot-${i}`);
+        if (!dot) return;
+        dot.className = 'q-dot';
+        if (respuestasUsuario[i] !== null) dot.classList.add('answered');
+        if (i === indexActual) dot.classList.add('active');
+      });
+
+      const optContainer = document.getElementById('options-container');
+      optContainer.innerHTML = "";
+      const letras = ['A', 'B', 'C', 'D'];
+
+      item.opts.forEach((opcion, i) => {
+        const label = document.createElement('div');
+        const esSeleccionada = respuestasUsuario[indexActual] === i;
+        label.className = `opt-label ${esSeleccionada ? 'selected' : ''}`;
+        label.innerHTML = `
+          <div class="opt-badge">${letras[i]}</div>
+          <div class="opt-text">${opcion}</div>
+        `;
+        label.onclick = () => seleccionarOpcion(i);
+        optContainer.appendChild(label);
+      });
+
+      document.getElementById('btn-prev').disabled = indexActual === 0;
+      document.getElementById('btn-next').disabled = indexActual === examenData.length - 1;
+
+      const respondidas = respuestasUsuario.filter(r => r !== null).length;
+      const pct = (respondidas / examenData.length) * 100;
+      document.getElementById('progress-fill').style.width = `${pct}%`;
+    }
+
+    function seleccionarOpcion(optIdx) {
+      respuestasUsuario[indexActual] = optIdx;
+      renderPregunta();
+    }
+
+    function moverPregunta(delta) {
+      const nuevo = indexActual + delta;
+      if (nuevo >= 0 && nuevo < examenData.length) {
+        indexActual = nuevo;
+        renderPregunta();
+      }
+    }
+
+    function irAPregunta(idx) {
+      indexActual = idx;
+      renderPregunta();
+    }
+
+    function confirmarEntrega() {
+      const contestadas = respuestasUsuario.filter(r => r !== null).length;
+      const faltantes = examenData.length - contestadas;
+
+      if (faltantes > 0) {
+        const confirmar = confirm(`Tienes ${faltantes} pregunta(s) sin responder. ¿Deseas calificar y finalizar el examen de todos modos?`);
+        if (!confirmar) return;
+      }
+
+      clearInterval(intervaloTimer);
+      mostrarResultados();
+    }
+
+    function mostrarResultados() {
+      document.getElementById('screen-quiz').style.display = 'none';
+      document.getElementById('screen-results').style.display = 'block';
+
+      let aciertos = 0;
+      const reviewList = document.getElementById('review-list');
+      reviewList.innerHTML = "";
+
+      examenData.forEach((item, i) => {
+        const userAns = respuestasUsuario[i];
+        const esCorrecta = userAns === item.ans;
+        if (esCorrecta) aciertos++;
+
+        const div = document.createElement('div');
+        div.className = 'review-item';
+        div.innerHTML = `
+          <span class="status-pill ${esCorrecta ? 'correct' : 'incorrect'}">
+            ${esCorrecta ? '✓ Correcto' : '✗ Incorrecto'}
+          </span>
+          <div style="font-weight: 600; margin: 2px 0 4px;">${item.q}</div>
+          <div style="color: var(--text-muted); font-size: 0.8rem;">
+            Tu respuesta: <strong>${userAns !== null ? item.opts[userAns] : 'No contestada'}</strong>
+          </div>
+          ${!esCorrecta ? `<div style="color: #15803d; font-size: 0.8rem; margin-top: 2px;">Respuesta correcta: <strong>${item.opts[item.ans]}</strong></div>` : ''}
+          <div style="font-size: 0.78rem; color: #475569; margin-top: 4px; font-style: italic;">
+            Justificación: ${item.exp}
+          </div>
+        `;
+        reviewList.appendChild(div);
+      });
+
+      const calif = ((aciertos / examenData.length) * 10).toFixed(1);
+      const tiempoStr = document.getElementById('timer-display').innerText;
+
+      const ahora = new Date();
+      const fechaHoraStr = ahora.toLocaleDateString("es-MX", {
+        day: "2-digit", month: "2-digit", year: "numeric"
+      }) + " " + ahora.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+
+      const historial = obtenerHistorial();
+      const numIntento = historial.length + 1;
+
+      const nuevoRegistro = {
+        intento: numIntento,
+        alumno: estudiante.nombre,
+        grupo: estudiante.grupo,
+        calificacion: calif,
+        aciertos: `${aciertos}/${examenData.length}`,
+        fechaHora: fechaHoraStr,
+        duracion: tiempoStr,
+        timestamp: Date.now()
+      };
+
+      historial.push(nuevoRegistro);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(historial));
+
+      document.getElementById('res-score').innerText = calif;
+      document.getElementById('res-student-info').innerText = `Alumno: ${estudiante.nombre} | Grupo: ${estudiante.grupo} | Intento #${numIntento}`;
+      document.getElementById('res-summary').innerText = `Has obtenido ${aciertos} aciertos de ${examenData.length} reactivos en un tiempo de ${tiempoStr}.`;
+
+      // Gestión del Recuadro de Promedio si es el intento 2 o más
+      const averageBox = document.getElementById('average-box');
+      if (historial.length >= 2) {
+        const notaBase = parseFloat(historial[0].calificacion);
+        const notaActual = parseFloat(calif);
+        const promedio = ((notaBase + notaActual) / 2).toFixed(1);
+
+        document.getElementById('avg-base-score').innerText = notaBase.toFixed(1);
+        document.getElementById('avg-curr-score').innerText = notaActual.toFixed(1);
+        document.getElementById('avg-final-score').innerText = promedio;
+        averageBox.style.display = 'block';
+      } else {
+        averageBox.style.display = 'none';
+      }
+
+      verificarBannerPrimerIntento();
+      actualizarHistorialEnPantalla();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function obtenerHistorial() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function generarTablaHTML(historial) {
+      if (historial.length === 0) {
+        return `<p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 6px;">No hay intentos previos registrados.</p>`;
+      }
+
+      let html = `
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th># Intento</th>
+              <th>Fecha y Hora</th>
+              <th>Tiempo</th>
+              <th>Aciertos</th>
+              <th>Nota</th>
+            </tr>
+          </thead>
+          <tbody>
+      `;
+
+      const invertido = [...historial].reverse();
+      invertido.forEach(reg => {
+        const esAprobado = parseFloat(reg.calificacion) >= 6.0;
+        const esPrimerIntento = reg.intento === 1;
+        html += `
+          <tr ${esPrimerIntento ? 'style="background: #fffbeb;"' : ''}>
+            <td>
+              <strong>#${reg.intento}</strong> ${esPrimerIntento ? '<span style="font-size:0.68rem; color:#b45309; font-weight:700;">(BASE)</span>' : ''}
+            </td>
+            <td>${reg.fechaHora}</td>
+            <td>${reg.duracion}</td>
+            <td>${reg.aciertos}</td>
+            <td>
+              <span class="badge-grade ${esAprobado ? 'grade-pass' : 'grade-fail'}">
+                ${reg.calificacion}
+              </span>
+            </td>
+          </tr>
+        `;
+      });
+
+      html += `</tbody></table>`;
+      return html;
+    }
+
+    function actualizarHistorialEnPantalla() {
+      const historial = obtenerHistorial();
+      const tablaHTML = generarTablaHTML(historial);
+
+      const resContainer = document.getElementById('results-history-table-container');
+      if (resContainer) resContainer.innerHTML = tablaHTML;
+
+      const introBox = document.getElementById('intro-history-box');
+      const introContainer = document.getElementById('intro-history-table-container');
+      if (introBox && introContainer) {
+        if (historial.length > 0) {
+          introBox.style.display = 'block';
+          introContainer.innerHTML = tablaHTML;
+          verificarBannerPrimerIntento();
+        } else {
+          introBox.style.display = 'none';
+        }
+      }
+    }
+
+    function reiniciarExamenParaNuevoIntento() {
+      comenzarExamen();
+    }
+
+    // Modal QR original
+    function abrirModalQR() {
+      const modal = document.getElementById('qr-modal');
+      const container = document.getElementById('qrcode-container');
+      container.innerHTML = "";
+      
+      const currentUrl = window.location.href;
+      document.getElementById('qr-current-url').innerText = currentUrl;
+
+      new QRCode(container, {
+        text: currentUrl,
+        width: 180,
+        height: 180,
+        colorDark: "#1e3a8a",
+        colorLight: "#ffffff",
+        correctLevel: QRCode.CorrectLevel.M
+      });
+
+      modal.style.display = 'flex';
+    }
+
+    function cerrarModalQR() {
+      document.getElementById('qr-modal').style.display = 'none';
+    }
+  </script>
+</body>
+</html>
